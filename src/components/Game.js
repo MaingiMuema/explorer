@@ -6,8 +6,8 @@ import Spaceship from "./Spaceship";
 // Camera follow component
 const CameraFollow = ({ target }) => {
   const { camera } = useThree();
-  const cameraPosition = useRef([0, 2, 10]);
-  const smoothness = 0.1;
+  const cameraPosition = useRef([0, 1.5, 5]); // Adjusted initial position
+  const smoothness = 0.05;
 
   useFrame(() => {
     if (target.current) {
@@ -15,8 +15,8 @@ const CameraFollow = ({ target }) => {
       const targetRotation = target.current.rotation;
 
       // Calculate desired camera position (behind and above the ship)
-      const distance = 10;
-      const height = 3;
+      const distance = 4; // Reduced distance for closer view
+      const height = 1.5; // Adjusted height
       const angle = targetRotation.y;
 
       const desiredX = targetPosition.x - Math.sin(angle) * distance;
@@ -44,12 +44,26 @@ const Game = () => {
     <div style={{ width: "100vw", height: "100vh", backgroundColor: "#000" }}>
       <Canvas shadows>
         <Suspense fallback={null}>
-          <PerspectiveCamera makeDefault position={[0, 2, 10]} />
+          <PerspectiveCamera makeDefault position={[0, 1.5, 5]} /> {/* Updated initial camera position */}
           <CameraFollow target={shipRef} />
           
-          <ambientLight intensity={0.2} />
-          <pointLight position={[10, 10, 10]} intensity={1} />
-          <pointLight position={[-10, -10, -10]} intensity={0.5} />
+          {/* Enhanced lighting setup */}
+          <ambientLight intensity={0.3} />
+          
+          {/* Main light from the front-top */}
+          <directionalLight 
+            position={[5, 5, 5]} 
+            intensity={1} 
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+          />
+          
+          {/* Fill light from the back */}
+          <pointLight position={[-5, 3, -5]} intensity={0.5} color="#6666ff" />
+          
+          {/* Rim light for highlighting edges */}
+          <pointLight position={[0, -3, -5]} intensity={0.3} color="#ff6666" />
 
           <Spaceship ref={shipRef} position={[0, 0, 0]} rotation={[0, Math.PI / 4, 0]} />
 
