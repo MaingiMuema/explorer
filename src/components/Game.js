@@ -1,6 +1,7 @@
 import React, { Suspense, useRef } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { Stars, PerspectiveCamera } from "@react-three/drei";
+import * as THREE from "three";
 import Spaceship from "./Spaceship";
 
 // Camera follow component
@@ -24,9 +25,12 @@ const CameraFollow = ({ target }) => {
       const desiredZ = targetPosition.z - Math.cos(angle) * distance;
 
       // Smooth camera movement
-      cameraPosition.current[0] += (desiredX - cameraPosition.current[0]) * smoothness;
-      cameraPosition.current[1] += (desiredY - cameraPosition.current[1]) * smoothness;
-      cameraPosition.current[2] += (desiredZ - cameraPosition.current[2]) * smoothness;
+      cameraPosition.current[0] +=
+        (desiredX - cameraPosition.current[0]) * smoothness;
+      cameraPosition.current[1] +=
+        (desiredY - cameraPosition.current[1]) * smoothness;
+      cameraPosition.current[2] +=
+        (desiredZ - cameraPosition.current[2]) * smoothness;
 
       // Update camera position and look at target
       camera.position.set(...cameraPosition.current);
@@ -44,33 +48,51 @@ const Game = () => {
     <div style={{ width: "100vw", height: "100vh", backgroundColor: "#000" }}>
       <Canvas shadows>
         <Suspense fallback={null}>
-          <PerspectiveCamera makeDefault position={[0, 1.5, 5]} /> {/* Updated initial camera position */}
+          <PerspectiveCamera makeDefault position={[0, 1.5, 5]} />{" "}
+          {/* Updated initial camera position */}
           <CameraFollow target={shipRef} />
           
           {/* Enhanced lighting setup */}
-          <ambientLight intensity={0.3} />
+          <ambientLight intensity={0.2} />
           
           {/* Main light from the front-top */}
-          <directionalLight 
-            position={[5, 5, 5]} 
-            intensity={1} 
+          <directionalLight
+            position={[5, 5, 5]}
+            intensity={0.7}
             castShadow
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
           />
           
-          {/* Fill light from the back */}
-          <pointLight position={[-5, 3, -5]} intensity={0.5} color="#6666ff" />
+          {/* Atmospheric lighting */}
+          <fog attach="fog" args={["#000000", 10, 50]} />
           
-          {/* Rim light for highlighting edges */}
-          <pointLight position={[0, -3, -5]} intensity={0.3} color="#ff6666" />
+          {/* Environment lighting */}
+          <pointLight position={[-5, 3, -5]} intensity={0.3} color="#4444ff" />
+          <pointLight position={[5, -3, -5]} intensity={0.3} color="#ff4444" />
+          
+          {/* Add volumetric-like beams */}
+          <mesh position={[0, 20, -20]} rotation={[-Math.PI / 4, 0, 0]}>
+            <planeGeometry args={[100, 100]} />
+            <meshBasicMaterial
+              color="#0066ff"
+              transparent
+              opacity={0.03}
+              blending={THREE.AdditiveBlending}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
 
-          <Spaceship ref={shipRef} position={[0, 0, 0]} rotation={[0, Math.PI / 4, 0]} />
-
+          <Spaceship
+            ref={shipRef}
+            position={[0, 0, 0]}
+            rotation={[0, Math.PI / 4, 0]}
+          />
+          
           <Stars
             radius={100}
             depth={50}
-            count={5000}
+            count={7000}
             factor={4}
             saturation={0}
             fade
@@ -80,16 +102,18 @@ const Game = () => {
       </Canvas>
 
       {/* Optional: Add control instructions */}
-      <div style={{
-        position: 'absolute',
-        bottom: 20,
-        left: 20,
-        color: 'white',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        padding: '10px',
-        borderRadius: '5px',
-        fontFamily: 'Arial'
-      }}>
+      <div
+        style={{
+          position: "absolute",
+          bottom: 20,
+          left: 20,
+          color: "white",
+          backgroundColor: "rgba(0,0,0,0.5)",
+          padding: "10px",
+          borderRadius: "5px",
+          fontFamily: "Arial",
+        }}
+      >
         <h3>Controls:</h3>
         <p>↑ Forward</p>
         <p>↓ Reverse</p>
