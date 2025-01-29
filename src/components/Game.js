@@ -4,6 +4,48 @@ import { Stars, PerspectiveCamera } from "@react-three/drei";
 import * as THREE from "three";
 import Spaceship from "./Spaceship";
 
+// Add StarField component
+const StarField = () => {
+  const { camera } = useThree();
+  const starsRef = useRef();
+  const starLayers = [
+    { count: 3000, depth: 100, size: 2.5, position: [0, 0, 0] },
+    { count: 2000, depth: 50, size: 2, position: [100, -50, -50] },
+    { count: 2000, depth: 75, size: 1.5, position: [-100, 50, -25] },
+  ];
+
+  useFrame(() => {
+    if (!starsRef.current) return;
+
+    // Update stars position relative to camera
+    const cameraPosition = camera.position;
+    starLayers.forEach((layer, i) => {
+      const stars = starsRef.current.children[i];
+      stars.position.x = cameraPosition.x * 0.9;
+      stars.position.y = cameraPosition.y * 0.9;
+      stars.position.z = cameraPosition.z * 0.9;
+    });
+  });
+
+  return (
+    <group ref={starsRef}>
+      {starLayers.map((layer, i) => (
+        <Stars
+          key={i}
+          radius={layer.depth}
+          depth={layer.depth}
+          count={layer.count}
+          factor={layer.size}
+          saturation={0}
+          fade
+          speed={1}
+          position={layer.position}
+        />
+      ))}
+    </group>
+  );
+};
+
 // Camera follow component
 const CameraFollow = ({ target }) => {
   const { camera } = useThree();
@@ -56,10 +98,8 @@ const Game = () => {
           <PerspectiveCamera makeDefault position={[0, 1.5, 5]} />{" "}
           {/* Updated initial camera position */}
           <CameraFollow target={shipRef} />
-          
           {/* Enhanced lighting setup */}
           <ambientLight intensity={0.2} />
-          
           {/* Main light from the front-top */}
           <directionalLight
             position={[5, 5, 5]}
@@ -68,14 +108,11 @@ const Game = () => {
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
           />
-          
           {/* Atmospheric lighting */}
           <fog attach="fog" args={["#000000", 10, 50]} />
-          
           {/* Environment lighting */}
           <pointLight position={[-5, 3, -5]} intensity={0.3} color="#4444ff" />
           <pointLight position={[5, -3, -5]} intensity={0.3} color="#ff4444" />
-          
           {/* Add volumetric-like beams */}
           <mesh position={[0, 20, -20]} rotation={[-Math.PI / 4, 0, 0]}>
             <planeGeometry args={[100, 100]} />
@@ -87,23 +124,14 @@ const Game = () => {
               side={THREE.DoubleSide}
             />
           </mesh>
-
           <Spaceship
             ref={shipRef}
             position={[0, 0, 0]}
             rotation={[0, Math.PI / 4, 0]}
             onEnergyUpdate={handleEnergyUpdate}
           />
-          
-          <Stars
-            radius={100}
-            depth={50}
-            count={7000}
-            factor={4}
-            saturation={0}
-            fade
-            speed={1}
-          />
+          {/* Replace single Stars component with StarField */}
+          <StarField />
         </Suspense>
       </Canvas>
 
