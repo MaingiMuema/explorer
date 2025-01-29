@@ -4,6 +4,8 @@ import { useGLTF } from "@react-three/drei";
 
 const Spaceship = React.forwardRef((props, ref) => {
   const group = useRef();
+  const { scene } = useGLTF("/models/spaceship.glb");
+  
   const [keys, setKeys] = useState({
     ArrowUp: false,
     ArrowDown: false,
@@ -108,206 +110,14 @@ const Spaceship = React.forwardRef((props, ref) => {
 
   return (
     <group ref={group} {...props}>
-      {/* Main body - brightened with more vibrant base color */}
-      <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[0.7, 1.0, 4.5, 16]} />
-        <meshPhysicalMaterial
-          color="#4169E1" // Royal Blue
-          metalness={0.7}
-          roughness={0.2}
-          clearcoat={1}
-          clearcoatRoughness={0.1}
-        />
-      </mesh>
-
-      {/* Secondary body layer */}
-      <mesh position={[0, 0, 0.2]} rotation={[0, Math.PI / 8, 0]}>
-        <cylinderGeometry args={[0.72, 1.02, 4.3, 16]} />
-        <meshPhysicalMaterial
-          color="#6495ED" // Cornflower Blue
-          metalness={0.8}
-          roughness={0.2}
-          clearcoat={0.5}
-          opacity={0.6}
-          transparent={true}
-        />
-      </mesh>
-
-      {/* Front nose cone */}
-      <group position={[0, 0, 2.5]}>
-        <mesh>
-          <coneGeometry args={[0.7, 2.5, 16]} />
-          <meshPhysicalMaterial
-            color="#4876FF" // Bright Blue
-            metalness={0.7}
-            roughness={0.2}
-            clearcoat={1}
-          />
-        </mesh>
-        {/* Energy field effect - brighter glow */}
-        <mesh position={[0, 0, -0.5]}>
-          <coneGeometry args={[0.8, 0.5, 16]} />
-          <meshPhysicalMaterial
-            color="#FF1493" // Deep Pink
-            emissive="#FF1493"
-            emissiveIntensity={1}
-            transparent={true}
-            opacity={0.4}
-            metalness={1}
-          />
-        </mesh>
-      </group>
-
-      {/* Wings with enhanced contrast */}
-      <group>
-        {[-1, 1].map((side) => (
-          <group
-            key={side}
-            position={[side * 1.8, 0, 0]}
-            rotation={[0, side * 0.2, side * Math.PI * 0.12]}
-          >
-            <mesh>
-              <boxGeometry args={[3.5, 0.08, 2.5]} />
-              <meshPhysicalMaterial
-                color="#1E90FF" // Dodger Blue
-                metalness={0.7}
-                roughness={0.2}
-                clearcoat={1}
-              />
-            </mesh>
-
-            {/* Wing energy trails - brighter cyan */}
-            <mesh position={[side * 0.4, 0.1, 0]}>
-              <boxGeometry args={[2.8, 0.02, 0.05]} />
-              <meshStandardMaterial
-                color="#00FFFF"
-                emissive="#00FFFF"
-                emissiveIntensity={6}
-                toneMapped={false}
-              />
-            </mesh>
-
-            {/* Wing tip accents - vibrant magenta */}
-            <mesh position={[side * 1.5, 0.05, -0.8]}>
-              <boxGeometry args={[0.5, 0.1, 0.1]} />
-              <meshStandardMaterial
-                color="#FF00FF"
-                emissive="#FF00FF"
-                emissiveIntensity={4}
-                toneMapped={false}
-              />
-            </mesh>
-          </group>
-        ))}
-      </group>
-
-      {/* Engine section with brighter plasma */}
-      <group position={[0, 0, -2.2]}>
-        <mesh>
-          <cylinderGeometry args={[0.8, 0.9, 0.8, 16]} />
-          <meshPhysicalMaterial
-            color="#4169E1" // Royal Blue
-            metalness={0.7}
-            roughness={0.2}
-            clearcoat={1}
-          />
-        </mesh>
-
-        {/* Brighter engine glow */}
-        {[0.3, 0.2, 0.1, 0].map((z, i) => (
-          <mesh key={i} position={[0, 0, -z]}>
-            <cylinderGeometry args={[0.6 - i * 0.1, 0.6 - i * 0.1, 0.1, 16]} />
-            <meshStandardMaterial
-              color={i % 2 ? "#00FFFF" : "#FF1493"}
-              emissive={i % 2 ? "#00FFFF" : "#FF1493"}
-              emissiveIntensity={6 - i}
-              toneMapped={false}
-              transparent={true}
-              opacity={0.9}
-            />
-          </mesh>
-        ))}
-      </group>
-
-      {/* Enhanced cockpit with holographic effect */}
-      <group position={[0, 0.6, 1.2]}>
-        {/* Main cockpit glass */}
-        <mesh>
-          <sphereGeometry
-            args={[0.5, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.6]}
-          />
-          <meshPhysicalMaterial
-            color="#80ffff"
-            metalness={0.1}
-            roughness={0.1}
-            transmission={0.9}
-            thickness={0.5}
-            opacity={0.8}
-            transparent={true}
-            clearcoat={1}
-          />
-        </mesh>
-        {/* Holographic HUD effect */}
-        <mesh position={[0, 0.2, 0]} rotation={[Math.PI * 0.1, 0, 0]}>
-          <planeGeometry args={[0.6, 0.3]} />
-          <meshStandardMaterial
-            color="#00ffff"
-            emissive="#00ffff"
-            emissiveIntensity={2}
-            transparent={true}
-            opacity={0.4}
-            side={2}
-          />
-        </mesh>
-      </group>
-
-      {/* Enhanced surface details */}
-      <group>
-        {/* Glowing panel lines */}
-        {[-0.6, -0.2, 0.2, 0.6].map((x, i) => (
-          <mesh key={i} position={[x, 0.3, 0]}>
-            <boxGeometry args={[0.03, 0.01, 3]} />
-            <meshStandardMaterial
-              color={i % 2 ? "#00ffff" : "#ff00ff"}
-              emissive={i % 2 ? "#00ffff" : "#ff00ff"}
-              emissiveIntensity={3}
-              toneMapped={false}
-            />
-          </mesh>
-        ))}
-
-        {/* Tech panels with pulsing effect */}
-        {[-1, 1].map((x, i) => (
-          <mesh key={i} position={[x * 0.4, 0.4, 0]}>
-            <boxGeometry args={[0.3, 0.2, 0.05]} />
-            <meshStandardMaterial
-              color="#40ffff"
-              emissive="#40ffff"
-              emissiveIntensity={2 + Math.sin(Date.now() * 0.005) * 0.5}
-              toneMapped={false}
-            />
-          </mesh>
-        ))}
-
-        {/* Additional decorative elements */}
-        {[0, Math.PI].map((rotation, i) => (
-          <group key={i} rotation={[0, rotation, 0]}>
-            <mesh position={[0.5, 0, 0]}>
-              <torusGeometry args={[0.1, 0.02, 16, 16]} />
-              <meshStandardMaterial
-                color="#ff00ff"
-                emissive="#ff00ff"
-                emissiveIntensity={3}
-                toneMapped={false}
-              />
-            </mesh>
-          </group>
-        ))}
-      </group>
+      <primitive object={scene} scale={[0.05, 0.05, 0.05]} />
     </group>
   );
 });
 
 Spaceship.displayName = 'Spaceship';
+
+// Preload the model
+useGLTF.preload("/models/spaceship.glb");
 
 export default Spaceship;
