@@ -1,4 +1,4 @@
-import React, { Suspense, useRef } from "react";
+import React, { Suspense, useRef, useState } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { Stars, PerspectiveCamera } from "@react-three/drei";
 import * as THREE from "three";
@@ -43,6 +43,11 @@ const CameraFollow = ({ target }) => {
 
 const Game = () => {
   const shipRef = useRef(null);
+  const [shipEnergy, setShipEnergy] = useState(100);
+
+  const handleEnergyUpdate = (energy) => {
+    setShipEnergy(energy);
+  };
 
   return (
     <div style={{ width: "100vw", height: "100vh", backgroundColor: "#000" }}>
@@ -87,6 +92,7 @@ const Game = () => {
             ref={shipRef}
             position={[0, 0, 0]}
             rotation={[0, Math.PI / 4, 0]}
+            onEnergyUpdate={handleEnergyUpdate}
           />
           
           <Stars
@@ -121,6 +127,43 @@ const Game = () => {
         <p>→ Turn Right</p>
         <p>W Ascend</p>
         <p>S Descend</p>
+        <p>SHIFT Boost</p>
+        <p>SPACE Stabilize</p>
+      </div>
+
+      {/* Energy Meter */}
+      <div
+        style={{
+          position: "absolute",
+          top: 20,
+          right: 20,
+          width: "200px",
+          color: "white",
+          backgroundColor: "rgba(0,0,0,0.5)",
+          padding: "10px",
+          borderRadius: "5px",
+          fontFamily: "Arial",
+        }}
+      >
+        <div style={{ marginBottom: "5px" }}>Energy</div>
+        <div
+          style={{
+            width: "100%",
+            height: "20px",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            borderRadius: "3px",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: `${shipEnergy}%`,
+              height: "100%",
+              backgroundColor: "#00ffff",
+              transition: "width 0.3s ease-out",
+            }}
+          />
+        </div>
       </div>
     </div>
   );

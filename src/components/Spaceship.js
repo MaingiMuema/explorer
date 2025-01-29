@@ -5,6 +5,7 @@ import * as THREE from "three";
 import EngineTrail from "./EngineTrail";
 
 const Spaceship = React.forwardRef((props, ref) => {
+  const { onEnergyUpdate, ...otherProps } = props;
   const group = useRef();
   const { scene } = useGLTF("/models/spaceship.glb");
 
@@ -15,6 +16,8 @@ const Spaceship = React.forwardRef((props, ref) => {
     ArrowRight: false,
     KeyW: false,
     KeyS: false,
+    ShiftLeft: false,  // For boost
+    Space: false,      // For stabilize
   });
 
   const [movement, setMovement] = useState({
@@ -22,16 +25,27 @@ const Spaceship = React.forwardRef((props, ref) => {
     rotation: [0, 0, 0],
     velocity: [0, 0, 0],
     acceleration: [0, 0, 0],
+    angularVelocity: [0, 0, 0],
     thrust: 0,
+    energy: 100,        // Energy for boost
+    stabilizing: false, // Stabilization mode
+    boosting: false,    // Boost mode
   });
 
   // Physics constants
-  const MAX_SPEED = 0.4;
-  const ACCELERATION = 0.006;
+  const NORMAL_MAX_SPEED = 0.4;
+  const BOOST_MAX_SPEED = 0.8;
+  const NORMAL_ACCELERATION = 0.006;
+  const BOOST_ACCELERATION = 0.012;
   const ROTATION_SPEED = 0.025;
+  const ANGULAR_DAMPING = 0.95;
   const VERTICAL_SPEED = 0.05;
-  const DRAG = 0.99;
+  const NORMAL_DRAG = 0.995;
+  const SPACE_DRAG = 0.999;
   const MIN_SPEED = 0.001;
+  const ENERGY_RECOVERY_RATE = 0.2;
+  const ENERGY_CONSUMPTION_RATE = 0.5;
+  const STABILIZE_STRENGTH = 0.15;
 
   // Load all textures
   const [colorMap, normalMap, metalnessMap, roughnessMap, aoMap, emissionMap] =
@@ -148,35 +162,78 @@ const Spaceship = React.forwardRef((props, ref) => {
       // Calculate new position and rotation
       const newMovement = { ...movement };
 
+      // Energy management
+      if (newMovement.boosting) {
+        newMovement.energy = Math.max(0, newMovement.energy - ENERGY_CONSUMPTION_RATE);
+        if (newMovement.energy <= 0) {
+          newMovement.boosting = false;
+        }
+      } else {
+        newMovement.energy = Math.min(100, newMovement.energy + ENERGY_RECOVERY_RATE);
+      }
+
+      // Update parent component with new energy value
+      onEnergyUpdate?.(newMovement.energy);
+
+      // Handle boost activation/deactivation
+      if (keys.ShiftLeft && newMovement.energy > 20) {
+        newMovement.boosting = true;
+      } else {
+        newMovement.boosting = false;
+      }
+
+      // Handle stabilization
+      newMovement.stabilizing = keys.Space;
+
+      // Calculate current max speed and acceleration
+      const currentMaxSpeed = newMovement.boosting ? BOOST_MAX_SPEED : NORMAL_MAX_SPEED;
+      const currentAcceleration = newMovement.boosting ? BOOST_ACCELERATION : NORMAL_ACCELERATION;
+
       // Calculate thrust based on input
       let targetThrust = 0;
       if (keys.ArrowUp) targetThrust = 1;
-      if (keys.ArrowDown) targetThrust = -0.7; // Slower reverse speed
+      if (keys.ArrowDown) targetThrust = -0.5; // Slower reverse speed
 
       // Smoothly interpolate thrust
       newMovement.thrust += (targetThrust - newMovement.thrust) * 0.1;
 
-      // Apply thrust to acceleration
-      const thrustVector = {
-        x: Math.sin(movement.rotation[1]) * newMovement.thrust * ACCELERATION,
-        z: Math.cos(movement.rotation[1]) * newMovement.thrust * ACCELERATION,
-      };
+      // Apply thrust to acceleration with proper directional vectors
+      const shipForward = new THREE.Vector3(0, 0, 1).applyEuler(new THREE.Euler(...newMovement.rotation));
+      const thrustVector = shipForward.multiplyScalar(newMovement.thrust * currentAcceleration);
 
       newMovement.acceleration[0] = thrustVector.x;
+      newMovement.acceleration[1] = 0;
       newMovement.acceleration[2] = thrustVector.z;
 
-      // Apply acceleration to velocity
+      // Calculate angular acceleration
+      const angularAccel = [0, 0, 0];
+      if (keys.ArrowLeft) angularAccel[1] = ROTATION_SPEED;
+      if (keys.ArrowRight) angularAccel[1] = -ROTATION_SPEED;
+
+      // Update angular velocity with damping
+      newMovement.angularVelocity = newMovement.angularVelocity.map((av, i) => {
+        let newAV = av + angularAccel[i];
+        newAV *= ANGULAR_DAMPING;
+        return newAV;
+      });
+
+      // Apply stabilization if active
+      if (newMovement.stabilizing) {
+        newMovement.velocity = newMovement.velocity.map(v => v * 0.9);
+        newMovement.angularVelocity = newMovement.angularVelocity.map(av => av * 0.8);
+      }
+
+      // Apply acceleration to velocity with improved physics
       newMovement.velocity = newMovement.velocity.map((v, i) => {
         let newV = v + newMovement.acceleration[i];
-
-        // Apply drag (stronger when not thrusting)
-        const dragFactor =
-          Math.abs(newMovement.thrust) > 0.1 ? DRAG : DRAG * 0.98;
+        
+        // Apply space drag (stronger when stabilizing)
+        const dragFactor = newMovement.stabilizing ? NORMAL_DRAG : SPACE_DRAG;
         newV *= dragFactor;
 
-        // Limit maximum speed
-        if (Math.abs(newV) > MAX_SPEED) {
-          newV = Math.sign(newV) * MAX_SPEED;
+        // Apply velocity limits
+        if (Math.abs(newV) > currentMaxSpeed) {
+          newV = Math.sign(newV) * currentMaxSpeed;
         }
 
         // Stop completely if very slow
@@ -187,34 +244,29 @@ const Spaceship = React.forwardRef((props, ref) => {
         return newV;
       });
 
-      // Left/Right rotation with smooth deceleration
-      if (keys.ArrowLeft) {
-        newMovement.rotation[1] += ROTATION_SPEED;
-      }
-      if (keys.ArrowRight) {
-        newMovement.rotation[1] -= ROTATION_SPEED;
-      }
-
       // Vertical movement with smooth acceleration
       if (keys.KeyW) {
         newMovement.velocity[1] = Math.min(
           newMovement.velocity[1] + VERTICAL_SPEED * 0.5,
-          MAX_SPEED
+          currentMaxSpeed
         );
       }
       if (keys.KeyS) {
         newMovement.velocity[1] = Math.max(
           newMovement.velocity[1] - VERTICAL_SPEED * 0.5,
-          -MAX_SPEED
+          -currentMaxSpeed
         );
       }
       if (!keys.KeyW && !keys.KeyS) {
-        newMovement.velocity[1] *= DRAG;
+        newMovement.velocity[1] *= NORMAL_DRAG;
       }
 
-      // Apply velocity to position
+      // Update position and rotation
       newMovement.position = newMovement.position.map(
         (p, i) => p + newMovement.velocity[i]
+      );
+      newMovement.rotation = newMovement.rotation.map(
+        (r, i) => r + newMovement.angularVelocity[i]
       );
 
       // Update movement state
@@ -222,31 +274,26 @@ const Spaceship = React.forwardRef((props, ref) => {
 
       // Apply movement to the group
       group.current.position.set(...newMovement.position);
-      group.current.rotation.set(
-        newMovement.rotation[0],
-        newMovement.rotation[1],
-        newMovement.rotation[2]
-      );
+      group.current.rotation.set(...newMovement.rotation);
 
-      // Add slight floating animation
-      const floatAmount = 0.001; // Reduced from 0.002
-      group.current.position.y +=
-        Math.sin(state.clock.elapsedTime) * floatAmount;
-      group.current.rotation.z =
-        Math.sin(state.clock.elapsedTime * 0.5) * 0.015; // Reduced from 0.02
+      // Add slight floating animation (reduced when stabilizing)
+      const floatAmount = newMovement.stabilizing ? 0.0005 : 0.001;
+      group.current.position.y += Math.sin(state.clock.elapsedTime) * floatAmount;
+      group.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.5) * 
+        (newMovement.stabilizing ? 0.005 : 0.015);
     }
   });
 
   return (
-    <group ref={group} {...props}>
+    <group ref={group} {...otherProps}>
       <primitive object={scene} scale={[0.1, 0.1, 0.1]} />
       
       {/* Add engine glow */}
       <pointLight
         position={[0, 0, 2]}
         distance={3}
-        intensity={Math.abs(movement.thrust) * 2}
-        color="#00ffff"
+        intensity={Math.abs(movement.thrust) * (movement.boosting ? 3 : 2)}
+        color={movement.boosting ? "#ff00ff" : "#00ffff"}
       />
       
       {/* Add engine trails */}
@@ -256,8 +303,8 @@ const Spaceship = React.forwardRef((props, ref) => {
           group.current?.position.y || 0,
           (group.current?.position.z || 0) + 0.5
         ]}
-        thrust={Math.abs(movement.thrust)}
-        color="#00ffff"
+        thrust={Math.abs(movement.thrust) * (movement.boosting ? 1.5 : 1)}
+        color={movement.boosting ? "#ff00ff" : "#00ffff"}
       />
       <EngineTrail
         position={[
@@ -265,8 +312,8 @@ const Spaceship = React.forwardRef((props, ref) => {
           group.current?.position.y || 0,
           (group.current?.position.z || 0) + 0.5
         ]}
-        thrust={Math.abs(movement.thrust)}
-        color="#ff00ff"
+        thrust={Math.abs(movement.thrust) * (movement.boosting ? 1.5 : 1)}
+        color={movement.boosting ? "#ff66ff" : "#66ffff"}
       />
     </group>
   );
